@@ -1,10 +1,10 @@
-package com.example.demo;
+package com.carelink;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class DemoApplicationTests {
+class CarelinkApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -8,11 +8,11 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.example</groupId>
-	<artifactId>demo</artifactId>
+	<groupId>com.carelink</groupId>
+	<artifactId>carelink</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>demo</name>
-	<description/>
+	<name>carelink</name>
+	<description>CareLink MedTech Backend Service</description>
 	<url/>
 	<licenses>
 		<license/>
