@@ -1,27 +1,47 @@
 import React, { useState } from 'react';
-import { Home, FileText, User, ArrowLeft, Download, Shield, Phone, Heart } from 'lucide-react';
+import { Home, FileText, User, Download, Shield, Phone } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
 import { HomePage } from './pages/Home';
 import { NearbyHospitalsPage } from './pages/NearbyHospitals';
-import { RaiseTicketPage } from './pages/RaiseTicket';
+import { TalkToDoctorPage } from './pages/TalkToDoctor';
+import { SubPageLayout } from './components/common/SubPageLayout';
 
 type NavigationTab = 'home' | 'reports' | 'profile' | 'nearby-hospitals' | 'raise-ticket';
 
 export const App: React.FC = () => {
   const [currentTab, setCurrentTab] = useState<NavigationTab>('home');
 
+  const goHome = () => setCurrentTab('home');
+
   return (
     <AuthProvider>
       <div className="app-viewport">
         <main className="device-frame">
-          {/* Main Content Area */}
-          {currentTab === 'home' && <HomePage onNavigate={(route) => setCurrentTab(route as NavigationTab)} />}
 
-          {/* Sub-view: Reports */}
+          {/* ── Home ─────────────────────────────────────────── */}
+          {currentTab === 'home' && (
+            <HomePage onNavigate={(route) => setCurrentTab(route as NavigationTab)} />
+          )}
+
+          {/* ── Talk to a Doctor ──────────────────────────────── */}
+          {currentTab === 'raise-ticket' && (
+            <SubPageLayout title="Talk to a Doctor" onBack={goHome}>
+              <TalkToDoctorPage />
+            </SubPageLayout>
+          )}
+
+          {/* ── Nearby Hospitals ─────────────────────────────── */}
+          {currentTab === 'nearby-hospitals' && (
+            <SubPageLayout title="Nearby Hospitals & PHCs" onBack={goHome}>
+              <NearbyHospitalsPage />
+            </SubPageLayout>
+          )}
+
+          {/* ── Reports ──────────────────────────────────────── */}
           {currentTab === 'reports' && (
             <div className="medtech-container sub-view-container">
               <div className="sub-view-header">
-                <h2>Medical Records & Reports</h2>
+                <h2>Medical Records &amp; Reports</h2>
                 <p>Access your past prescriptions, lab tests, and clinical summaries.</p>
               </div>
 
@@ -48,13 +68,9 @@ export const App: React.FC = () => {
                   }}
                 >
                   <span style={{ fontSize: '12px', color: '#059669', fontWeight: '600' }}>
-                    Normal Hemoglobin & Platelets
+                    Normal Hemoglobin &amp; Platelets
                   </span>
-                  <button
-                    className="icon-btn"
-                    style={{ width: '32px', height: '32px' }}
-                    title="Download Report"
-                  >
+                  <button className="icon-btn" style={{ width: '32px', height: '32px' }} title="Download Report">
                     <Download size={15} />
                   </button>
                 </div>
@@ -85,11 +101,7 @@ export const App: React.FC = () => {
                   <span style={{ fontSize: '12px', color: '#475569' }}>
                     Paracetamol 650mg, ORS Hydration
                   </span>
-                  <button
-                    className="icon-btn"
-                    style={{ width: '32px', height: '32px' }}
-                    title="Download Prescription"
-                  >
+                  <button className="icon-btn" style={{ width: '32px', height: '32px' }} title="Download Prescription">
                     <Download size={15} />
                   </button>
                 </div>
@@ -111,12 +123,12 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Sub-view: Profile */}
+          {/* ── Profile ──────────────────────────────────────── */}
           {currentTab === 'profile' && (
             <div className="medtech-container sub-view-container">
               <div className="sub-view-header">
-                <h2>Patient Profile & ABHA</h2>
-                <p>Digital Health Card & Registered Beneficiary Info.</p>
+                <h2>Patient Profile &amp; ABHA</h2>
+                <p>Digital Health Card &amp; Registered Beneficiary Info.</p>
               </div>
 
               <div
@@ -141,15 +153,7 @@ export const App: React.FC = () => {
                 <div style={{ marginTop: '16px', fontSize: '13px', letterSpacing: '1px' }}>
                   ABHA ID: <strong>91-8842-4910-3321</strong>
                 </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    marginTop: '12px',
-                    fontSize: '12px',
-                    opacity: 0.9,
-                  }}
-                >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '12px', fontSize: '12px', opacity: 0.9 }}>
                   <span>Blood: O+</span>
                   <span>Age: 28</span>
                   <span>Wardha District</span>
@@ -161,25 +165,11 @@ export const App: React.FC = () => {
                   Emergency Primary Contacts
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      fontSize: '13px',
-                    }}
-                  >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '13px' }}>
                     <span>Ramesh Kumar (Brother)</span>
                     <a
                       href="tel:+919876543210"
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        color: '#1259cb',
-                        textDecoration: 'none',
-                        fontWeight: '600',
-                      }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#1259cb', textDecoration: 'none', fontWeight: '600' }}
                     >
                       <Phone size={13} /> +91 98765 43210
                     </a>
@@ -189,41 +179,13 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Sub-view: Nearby Hospitals */}
-          {currentTab === 'nearby-hospitals' && (
-            <div className="medtech-container sub-view-container">
-              <button
-                className="location-chip"
-                onClick={() => setCurrentTab('home')}
-                style={{ marginBottom: '14px' }}
-              >
-                <ArrowLeft size={14} /> Back to Home
-              </button>
-              <NearbyHospitalsPage />
-            </div>
-          )}
-
-          {/* Sub-view: Raise Ticket */}
-          {currentTab === 'raise-ticket' && (
-            <div className="medtech-container sub-view-container">
-              <button
-                className="location-chip"
-                onClick={() => setCurrentTab('home')}
-                style={{ marginBottom: '14px' }}
-              >
-                <ArrowLeft size={14} /> Back to Home
-              </button>
-              <RaiseTicketPage />
-            </div>
-          )}
-
-          {/* Bottom Navigation Bar */}
+          {/* ── Bottom Navigation Bar ─────────────────────────── */}
           <nav className="bottom-nav">
             <div className="bottom-nav-inner">
               <button
                 type="button"
                 className={`nav-item ${currentTab === 'home' ? 'active' : ''}`}
-                onClick={() => setCurrentTab('home')}
+                onClick={goHome}
               >
                 <Home className="nav-icon" />
                 <span className="nav-label">HOME</span>
@@ -248,6 +210,7 @@ export const App: React.FC = () => {
               </button>
             </div>
           </nav>
+
         </main>
       </div>
     </AuthProvider>

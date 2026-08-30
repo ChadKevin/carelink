@@ -4,26 +4,18 @@ import {
   Video,
   Scan,
   FlaskConical,
-  Bell,
   Mic,
-  ArrowLeftRight,
-  ShieldAlert,
-  ChevronRight,
-  Sparkles,
   Camera,
-  Calendar,
-  FileText,
-  User,
-  CheckCircle2,
   X,
   Stethoscope,
-  Activity,
+  FlaskConical as FlaskIcon,
   AlertOctagon,
 } from 'lucide-react';
 import { VoiceAssistantModal } from '../../components/common/VoiceAssistantModal';
 import { EmergencyModal } from '../../components/common/EmergencyModal';
-import { LocationModal } from '../../components/common/LocationModal';
 import { NotificationModal } from '../../components/common/NotificationModal';
+import { TopNavBar } from '../../components/common/TopNavBar';
+import { useLocationPermission } from '../../hooks/useLocationPermission';
 
 interface HomePageProps {
   onNavigate?: (route: string) => void;
@@ -35,7 +27,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   // Modal states
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
 
   // Active feature dialog state (for quick action preview)
@@ -44,8 +35,12 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   // Language selection state
   const [activeLang, setActiveLang] = useState<ActiveLanguage>('EN');
 
-  // Location state
-  const [currentLocation, setCurrentLocation] = useState<string>('Wardha Rural District');
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // One-time GPS location hook
+  const { location: currentLocation, setLocation, requestLocation, isLocating } =
+    useLocationPermission('Wardha Rural District');
 
   const cycleLanguage = () => {
     if (activeLang === 'EN') setActiveLang('HI');
@@ -68,52 +63,18 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
 
   return (
     <div className="medtech-container">
-      {/* Top Header */}
-      <header className="top-header">
-        <div className="location-section" onClick={() => setIsLocationModalOpen(true)}>
-          <div className="location-title-row">
-            <h1 className="location-heading">Location</h1>
-          </div>
-          <button
-            type="button"
-            className="location-chip"
-            title="Click to change location"
-            style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left' }}
-          >
-            <MapPin size={14} color="#1259cb" />
-            <span>{currentLocation}</span>
-          </button>
-        </div>
-
-        <div className="header-actions">
-          {/* Language Selector Pill */}
-          <div
-            className="language-pill"
-            onClick={cycleLanguage}
-            title="Switch Language (English / Hindi / Marathi)"
-          >
-            <span className={`lang-segment ${activeLang === 'EN' ? 'active' : ''}`}>EN</span>
-            <span className="lang-divider">|</span>
-            <span className={`lang-segment ${activeLang === 'HI' ? 'active' : ''}`}>HI</span>
-            <span className="lang-divider">|</span>
-            <span className={`lang-segment ${activeLang === 'MR' ? 'active' : ''}`}>MR</span>
-            <span className="lang-switch-icon">
-              <ArrowLeftRight size={13} />
-            </span>
-          </div>
-
-          {/* Notification Bell Button */}
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => setIsNotificationModalOpen(true)}
-            aria-label="View notifications"
-          >
-            <Bell size={19} />
-            <span className="notification-badge"></span>
-          </button>
-        </div>
-      </header>
+      {/* Blinkit-style Top Navigation Bar */}
+      <TopNavBar
+        location={currentLocation}
+        onSetLocation={setLocation}
+        isLocating={isLocating}
+        onRequestGPS={requestLocation}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        activeLang={activeLang}
+        onCycleLanguage={cycleLanguage}
+        onNotificationClick={() => setIsNotificationModalOpen(true)}
+      />
 
       {/* Main Hero: "Tap to Speak" Voice Card */}
       <section
@@ -148,7 +109,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
           <div className="card-content">
             <h3 className="card-title">Hospital Near You</h3>
             <p className="card-description">
-              Locate nearby PHCs, clinics & live emergency beds
+              Locate nearby PHCs, clinics &amp; live emergency beds
             </p>
           </div>
         </div>
@@ -222,7 +183,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         <div className="emergency-content">
           <h3 className="emergency-title">Call for Help / Emergency</h3>
           <p className="emergency-subtitle">
-            24/7 instant ambulance dispatch & emergency medical response
+            24/7 instant ambulance dispatch &amp; emergency medical response
           </p>
         </div>
       </section>
@@ -299,14 +260,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                     <div className="emergency-action-btn" style={{ background: '#f8fafc' }}>
                       <div>
-                        <strong>Complete Blood Count (CBC) & Sugar</strong>
+                        <strong>Complete Blood Count (CBC) &amp; Sugar</strong>
                         <div style={{ fontSize: '12px', color: '#64748b' }}>Doorstep sample collection available</div>
                       </div>
                       <span className="info-status-pill ready">Available</span>
                     </div>
                     <div className="emergency-action-btn" style={{ background: '#f8fafc' }}>
                       <div>
-                        <strong>Chest X-Ray & Digital Radiology</strong>
+                        <strong>Chest X-Ray &amp; Digital Radiology</strong>
                         <div style={{ fontSize: '12px', color: '#64748b' }}>Wardha Sub-District Radiology Lab</div>
                       </div>
                       <span className="info-status-pill">Walk-in</span>
@@ -354,7 +315,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
               {activeFeatureModal === 'hospital' && (
                 <div>
                   <p style={{ fontSize: '13.5px', color: '#475569', marginBottom: '12px' }}>
-                    Closest healthcare facilities with real-time bed & doctor availability:
+                    Closest healthcare facilities with real-time bed &amp; doctor availability:
                   </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
                     <div className="info-card" style={{ margin: 0 }}>
@@ -393,14 +354,6 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         isOpen={isEmergencyModalOpen}
         onClose={() => setIsEmergencyModalOpen(false)}
         currentLocationName={currentLocation}
-      />
-
-      {/* Location Selector Modal */}
-      <LocationModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        currentLocation={currentLocation}
-        onSelectLocation={(loc) => setCurrentLocation(loc)}
       />
 
       {/* Notifications Modal */}
