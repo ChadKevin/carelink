@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { translations } from '../../utils/translations';
 import {
   MapPin,
   Video,
@@ -60,9 +61,32 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     }
     setActiveFeatureModal(cardType);
   };
-
+  const currentLang = localStorage.getItem('app_lang') || 'EN';
+const t = translations[currentLang];
   return (
-    <div className="medtech-container">
+    <div className="medtech-container" style={{ backgroundColor: '#fdfbf7', minHeight: '100vh' }}>
+      <style>{`
+  /* Overrides for Rural Health Theme */
+  .action-card {
+    border-left: 8px solid #059669 !important;
+    background-color: #ffffff !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.12) !important;
+  }
+  .card-title {
+    color: #065f46 !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+  }
+  .card-description {
+    color: #4b5563 !important;
+    font-size: 0.95rem !important;
+  }
+  .card-icon-badge {
+    background-color: #d1fae5 !important;
+    color: #059669 !important;
+  }
+`}</style>
       {/* Blinkit-style Top Navigation Bar */}
       <TopNavBar
         location={currentLocation}
@@ -107,7 +131,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
             <MapPin size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Hospital Near You</h3>
+            <h3 className="card-title">Hospitals Near You</h3>
             <p className="card-description">
               Locate nearby PHCs, clinics &amp; live emergency beds
             </p>

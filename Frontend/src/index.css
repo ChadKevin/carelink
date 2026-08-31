@@ -1998,7 +1998,12 @@ body,
     grid-template-columns: repeat(2, 1fr);
   }
 }
+/* Rural Healthcare Theme Overrides */
+body {
+  background-color: #fdfbf7 !important; /* Warm, earthy off-white instead of stark grey/blue */
+}
 
+<<<<<<< HEAD
 /* =========================================
    HOSPITAL NEAR YOU PAGE
    (reuses the TalkToDoctor design language)
@@ -2511,3 +2516,22 @@ body,
 
 
 
+=======
+/* Force action cards to look like physical medical files */
+.action-card {
+  border-left: 8px solid #059669 !important; /* Trustworthy Medical Green */
+  background-color: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 6px rgba(5, 150, 105, 0.08) !important;
+}
+
+.card-title {
+  color: #065f46 !important; /* Deep green for high contrast readability */
+  font-size: 1.3rem !important; /* Slightly larger for accessibility */
+}
+
+.card-icon-badge {
+  background-color: #d1fae5 !important; /* Soft green background for icons */
+  color: #059669 !important;
+}
+>>>>>>> d4648844af9eea30af29866ae3c6ca6e8af0195e
