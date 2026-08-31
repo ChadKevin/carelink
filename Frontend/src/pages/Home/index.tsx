@@ -109,7 +109,7 @@ const t = translations[currentLang];
             <MapPin size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Hospital Near You</h3>
+            <h3 className="card-title">{t.hospitalTitle}</h3>
             <p className="card-description">
               Locate nearby PHCs, clinics &amp; live emergency beds
             </p>
