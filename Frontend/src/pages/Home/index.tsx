@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { translations } from '../../utils/translations';
 import {
   MapPin,
   Video,
@@ -60,7 +61,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     }
     setActiveFeatureModal(cardType);
   };
-
+  const currentLang = localStorage.getItem('app_lang') || 'EN';
+const t = translations[currentLang];
   return (
     <div className="medtech-container">
       {/* Blinkit-style Top Navigation Bar */}
