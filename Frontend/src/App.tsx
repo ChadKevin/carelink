@@ -32,7 +32,7 @@ export const App: React.FC = () => {
 
           {/* ── Nearby Hospitals ─────────────────────────────── */}
           {currentTab === 'nearby-hospitals' && (
-            <SubPageLayout title="Nearby Hospitals & PHCs" onBack={goHome}>
+            <SubPageLayout title="Hospital Near You" onBack={goHome}>
               <NearbyHospitalsPage />
             </SubPageLayout>
           )}

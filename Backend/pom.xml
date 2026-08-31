@@ -16,6 +16,8 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<!-- JDK 24-compatible Lombok (JDK 23+ disables implicit annotation processing) -->
+		<lombok.version>1.18.38</lombok.version>
 	</properties>
 
 	<dependencies>
@@ -63,6 +65,21 @@
 
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<!-- Required on JDK 23+: keep annotation processors (Lombok) running -->
+					<proc>full</proc>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

@@ -1999,3 +1999,515 @@ body,
   }
 }
 
+/* =========================================
+   HOSPITAL NEAR YOU PAGE
+   (reuses the TalkToDoctor design language)
+   ========================================= */
+
+.hosp-page {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 20px;
+}
+
+/* ── Step 1: location card ─────────────────────────────────────────── */
+.hosp-loc-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #ffffff;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.hosp-loc-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 230px;
+}
+
+.hosp-loc-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius-full);
+  background: #e8f1fd;
+  color: var(--primary-blue);
+  border: 1.5px solid rgba(18, 89, 203, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.hosp-loc-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hosp-loc-step {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+}
+
+.hosp-loc-name {
+  font-size: 15.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hosp-loc-coords {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+}
+
+.hosp-loc-btn {
+  flex-shrink: 0;
+}
+
+.hosp-loc-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+/* ── Info notes (amber) ────────────────────────────────────────────── */
+.hosp-note {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #92400e;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  padding: 9px 14px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 14px;
+}
+
+.hosp-note svg {
+  flex-shrink: 0;
+  color: #b45309;
+}
+
+/* ── Map card ──────────────────────────────────────────────────────── */
+.hosp-map-card {
+  position: relative;
+  height: 360px;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1.5px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  background: #eef2f7;
+  margin-bottom: 20px;
+  /* Contain Leaflet's high z-index panes/controls so they never cover
+     the fixed topnav (z-50) or modals (z-100) */
+  isolation: isolate;
+}
+
+.hosp-leaflet {
+  height: 100%;
+  width: 100%;
+  background: #eef2f7;
+  font-family: var(--font-main);
+}
+
+.hosp-map-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(2px);
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--primary-blue);
+}
+
+.hosp-spin {
+  animation: hospSpin 0.9s linear infinite;
+}
+
+@keyframes hospSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Result count + legend ─────────────────────────────────────────── */
+.hosp-count-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.hosp-count {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+}
+
+.hosp-count strong {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.hosp-legend {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hosp-legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+}
+
+.hosp-legend-chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* ── Facility card extras ──────────────────────────────────────────── */
+.hosp-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  width: fit-content;
+}
+
+.hosp-distance {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.hosp-distance-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--primary-blue);
+  white-space: nowrap;
+}
+
+.hosp-distance-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+}
+
+.hosp-card.selected {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(18, 89, 203, 0.12), var(--shadow-md);
+}
+
+.hosp-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.hosp-call-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f6f4;
+  color: #00897b;
+  border: 1.5px solid rgba(0, 137, 123, 0.2);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.hosp-call-btn:hover {
+  background: #00897b;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+/* ── Empty / error state ───────────────────────────────────────────── */
+.hosp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 6px;
+  background: #ffffff;
+  border: 1.5px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px 24px;
+  margin-bottom: 20px;
+}
+
+.hosp-empty--error {
+  border-style: solid;
+}
+
+.hosp-empty-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: var(--radius-full);
+  background: #e8f1fd;
+  color: var(--primary-blue);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.hosp-empty--error .hosp-empty-icon {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.hosp-empty-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.hosp-empty-sub {
+  font-size: 13px;
+  color: var(--text-secondary);
+  max-width: 320px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+/* ── Skeleton loading cards ────────────────────────────────────────── */
+.hosp-skel-card {
+  pointer-events: none;
+}
+
+.hosp-skel {
+  position: relative;
+  overflow: hidden;
+  background: #edf1f7;
+  border-radius: 8px;
+}
+
+.hosp-skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
+  animation: hospShimmer 1.4s infinite;
+}
+
+@keyframes hospShimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.hosp-skel-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.hosp-skel-line {
+  height: 12px;
+  margin-bottom: 10px;
+}
+
+/* ── Leaflet overrides (clean, on-brand map) ───────────────────────── */
+/* Standard OSM raster tiles are quite saturated — soften them to match
+   the app's calm blue/white aesthetic */
+.hosp-leaflet .leaflet-tile {
+  filter: saturate(0.62) brightness(1.04) contrast(0.97);
+}
+
+.hosp-leaflet .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+
+.hosp-leaflet .leaflet-popup-content {
+  margin: 12px 16px;
+  font-family: var(--font-main);
+  line-height: 1.45;
+}
+
+.hosp-popup-name {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+}
+
+.hosp-popup-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+}
+
+.hosp-popup-link {
+  display: inline-block;
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary-blue);
+  text-decoration: none;
+}
+
+.hosp-popup-link:hover {
+  text-decoration: underline;
+}
+
+.hosp-leaflet .leaflet-control-zoom {
+  border: none;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.hosp-leaflet .leaflet-control-zoom a {
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.hosp-leaflet .leaflet-control-attribution {
+  font-size: 9.5px;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 8px 0 0 0;
+}
+
+/* ── Custom map markers ────────────────────────────────────────────── */
+.hosp-marker-wrapper {
+  background: transparent;
+  border: none;
+}
+
+/* Teardrop pin, tinted per facility type */
+.hosp-marker {
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 4px;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.5px solid #ffffff;
+  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.hosp-marker svg {
+  transform: rotate(45deg);
+}
+
+.hosp-marker:hover {
+  transform: rotate(-45deg) scale(1.12);
+}
+
+/* Pulsing "you are here" GPS dot */
+.hosp-user-dot {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: var(--radius-full);
+  background: var(--primary-blue);
+  border: 3px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(18, 89, 203, 0.35), 0 2px 8px rgba(15, 23, 42, 0.35);
+}
+
+.hosp-user-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: var(--radius-full);
+  background: rgba(18, 89, 203, 0.28);
+  animation: hospPulse 1.8s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes hospPulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .hosp-map-card {
+    height: 300px;
+  }
+
+  .hosp-loc-card {
+    padding: 16px;
+  }
+
+  .hosp-loc-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .hosp-footer-actions {
+    width: 100%;
+  }
+
+  .hosp-footer-actions .ttd-contact-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+
+
+

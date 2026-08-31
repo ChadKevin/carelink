@@ -99,7 +99,7 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
         {/* Card 1: Hospital Near You */}
         <div
           className="action-card"
-          onClick={() => window.location.href = '/hospitals.html'}
+          onClick={() => handleCardClick('hospital')}
           role="button"
           tabIndex={0}
         >
