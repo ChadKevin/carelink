@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Home, FileText, User, Download, Shield, Phone } from 'lucide-react';
 import { AuthProvider } from './context/AuthContext';
+import { LocationProvider } from './context/LocationContext';
 import { HomePage } from './pages/Home';
 import { NearbyHospitalsPage } from './pages/NearbyHospitals';
 import { TalkToDoctorPage } from './pages/TalkToDoctor';
@@ -15,6 +16,7 @@ export const App: React.FC = () => {
 
   return (
     <AuthProvider>
+      <LocationProvider>
       <div className="app-viewport">
         <main className="device-frame">
 
@@ -213,6 +215,7 @@ export const App: React.FC = () => {
 
         </main>
       </div>
+      </LocationProvider>
     </AuthProvider>
   );
 };

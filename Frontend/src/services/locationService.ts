@@ -23,7 +23,12 @@ export interface NearbyFacilitiesQuery {
 
 /* ─── OpenStreetMap Overpass (live fallback) ────────────────────────── */
 
-const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+/* Primary endpoint + public mirror — a rate-limited primary shouldn't
+   blank the map on the deployed site */
+const OVERPASS_ENDPOINTS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+];
 
 const PHC_NAME_PATTERN =
   /primary health|\bphc\b|community health|\bchc\b|rural health|sub[- ]?cent(re|er)|dispensary/i;
@@ -64,8 +69,10 @@ const overpassQuery = (lat: number, lng: number, radiusKm: number): string => {
   return [
     '[out:json][timeout:20];',
     '(',
-    `node["amenity"~"^(hospital|clinic)$"](${around});`,
-    `way["amenity"~"^(hospital|clinic)$"](${around});`,
+    `node["amenity"~"^(hospital|clinic|doctors)$"](${around});`,
+    `way["amenity"~"^(hospital|clinic|doctors)$"](${around});`,
+    `node["healthcare"~"^(hospital|clinic)$"](${around});`,
+    `way["healthcare"~"^(hospital|clinic)$"](${around});`,
     ');',
     // "out center;" prints tags + coordinates (nodes) / bbox center (ways)
     'out center;',
@@ -90,54 +97,71 @@ export const locationService = {
   /**
    * Live OpenStreetMap lookup straight from the browser — graceful fallback so
    * the map keeps working during a demo even if the backend is unreachable.
+   * Tries the primary Overpass endpoint, then a mirror.
    */
   getNearbyHospitalsViaOSM: async ({
     latitude,
     longitude,
     radiusKm = 25,
   }: NearbyFacilitiesQuery): Promise<Hospital[]> => {
-    const response = await fetch(OVERPASS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `data=${encodeURIComponent(overpassQuery(latitude, longitude, radiusKm))}`,
-    });
-    if (!response.ok) {
-      throw new Error(`Overpass request failed with status ${response.status}`);
+    let lastError: unknown = null;
+
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `data=${encodeURIComponent(overpassQuery(latitude, longitude, radiusKm))}`,
+        });
+        if (!response.ok) {
+          lastError = new Error(`Overpass request failed with status ${response.status}`);
+          continue; // try the next endpoint
+        }
+
+        const data = await response.json();
+        const elements: OverpassElement[] = data?.elements ?? [];
+
+        const results = elements
+          .filter((el) => {
+            const lat = el.lat ?? el.center?.lat;
+            const lon = el.lon ?? el.center?.lon;
+            return Boolean(el.tags?.name) && Number.isFinite(lat) && Number.isFinite(lon);
+          })
+          .map((el) => {
+            const lat = (el.lat ?? el.center?.lat) as number;
+            const lon = (el.lon ?? el.center?.lon) as number;
+            const tags = el.tags ?? {};
+            const addressBits = [
+              tags['addr:street'],
+              tags['addr:suburb'] || tags['addr:village'] || tags['addr:city'],
+              tags['addr:postcode'],
+            ].filter(Boolean);
+            return {
+              id: `osm-${el.type}-${el.id}`,
+              name: tags.name,
+              address: addressBits.length ? addressBits.join(', ') : null,
+              type: classifyOsmFacility(tags.amenity ?? 'clinic', tags.name),
+              latitude: lat,
+              longitude: lon,
+              distanceKm: haversineKm(latitude, longitude, lat, lon),
+              phone: tags.phone || tags['contact:phone'] || null,
+              availableBeds: tags.beds ? parseInt(tags.beds, 10) : null,
+              emergency24x7: tags.emergency === 'yes',
+            } as Hospital;
+          })
+          .filter((h) => Number.isFinite(h.latitude) && Number.isFinite(h.longitude))
+          .sort((a, b) => a.distanceKm - b.distanceKm)
+          .slice(0, 30);
+
+        if (results.length > 0) return results;
+        lastError = new Error('Overpass returned no named facilities');
+      } catch (err) {
+        lastError = err;
+      }
     }
 
-    const data = await response.json();
-    const elements: OverpassElement[] = data?.elements ?? [];
-
-    return elements
-      .filter((el) => {
-        const lat = el.lat ?? el.center?.lat;
-        const lon = el.lon ?? el.center?.lon;
-        return Boolean(el.tags?.name) && Number.isFinite(lat) && Number.isFinite(lon);
-      })
-      .map((el) => {
-        const lat = (el.lat ?? el.center?.lat) as number;
-        const lon = (el.lon ?? el.center?.lon) as number;
-        const tags = el.tags ?? {};
-        const addressBits = [
-          tags['addr:street'],
-          tags['addr:suburb'] || tags['addr:village'] || tags['addr:city'],
-          tags['addr:postcode'],
-        ].filter(Boolean);
-        return {
-          id: `osm-${el.type}-${el.id}`,
-          name: tags.name,
-          address: addressBits.length ? addressBits.join(', ') : null,
-          type: classifyOsmFacility(tags.amenity ?? 'clinic', tags.name),
-          latitude: lat,
-          longitude: lon,
-          distanceKm: haversineKm(latitude, longitude, lat, lon),
-          phone: tags.phone || tags['contact:phone'] || null,
-          availableBeds: tags.beds ? parseInt(tags.beds, 10) : null,
-          emergency24x7: tags.emergency === 'yes',
-        } as Hospital;
-      })
-      .filter((h) => Number.isFinite(h.latitude) && Number.isFinite(h.longitude))
-      .sort((a, b) => a.distanceKm - b.distanceKm)
-      .slice(0, 30);
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('All Overpass endpoints failed');
   },
 };

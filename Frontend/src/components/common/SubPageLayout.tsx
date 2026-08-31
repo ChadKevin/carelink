@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { TopNavBar } from './TopNavBar';
-import { useLocationPermission } from '../../hooks/useLocationPermission';
+import { useLocationContext } from '../../context/LocationContext';
 
 type ActiveLanguage = 'EN' | 'HI' | 'MR';
 
@@ -18,8 +18,7 @@ interface SubPageLayoutProps {
  * then the page content below.
  */
 export const SubPageLayout: React.FC<SubPageLayoutProps> = ({ title, onBack, children }) => {
-  const { location, setLocation, requestLocation, isLocating } =
-    useLocationPermission('Wardha Rural District');
+  const { label, isLocating, requestGps, resolveAndSetPlace } = useLocationContext();
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [activeLang, setActiveLang] = React.useState<ActiveLanguage>('EN');
@@ -32,10 +31,14 @@ export const SubPageLayout: React.FC<SubPageLayoutProps> = ({ title, onBack, chi
     <div className="subpage-shell">
       {/* Shared sticky top nav */}
       <TopNavBar
-        location={location}
-        onSetLocation={setLocation}
+        location={label}
+        onSetLocation={(loc) => {
+          void resolveAndSetPlace(loc);
+        }}
         isLocating={isLocating}
-        onRequestGPS={requestLocation}
+        onRequestGPS={() => {
+          void requestGps();
+        }}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         activeLang={activeLang}

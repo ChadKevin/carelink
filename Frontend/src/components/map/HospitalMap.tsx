@@ -2,14 +2,31 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import type { DrivingInfo } from '../../services/googleMapsService';
+import { isGoogleMapsEnabled } from '../../services/googleMapsService';
 import type { FacilityType, Hospital } from '../../services/locationService';
+import { GoogleHospitalMap } from './GoogleHospitalMap';
 
 export interface HospitalMapProps {
   center: { lat: number; lng: number };
   hospitals: Hospital[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  /** Real-road driving info (Google Distance Matrix) — used by the Google view. */
+  drivingInfo?: Record<string, DrivingInfo>;
 }
+
+/**
+ * Dispatches to Google Maps when VITE_GOOGLE_MAPS_API_KEY is configured,
+ * otherwise renders the free OpenStreetMap (Leaflet) view.
+ */
+export const HospitalMap: React.FC<HospitalMapProps> = (props) => {
+  return isGoogleMapsEnabled() ? (
+    <GoogleHospitalMap {...props} />
+  ) : (
+    <LeafletHospitalMap {...props} />
+  );
+};
 
 /* ─── Custom markers (pure CSS/SVG — no broken default pin assets) ──── */
 
@@ -78,11 +95,12 @@ const MapViewController: React.FC<
 
 /* ─── Component ─────────────────────────────────────────────────────── */
 
-export const HospitalMap: React.FC<HospitalMapProps> = ({
+const LeafletHospitalMap: React.FC<HospitalMapProps> = ({
   center,
   hospitals,
   selectedId,
   onSelect,
+  // drivingInfo is only consumed by the Google Maps view
 }) => {
   const facilityIcons = useMemo(
     () => ({

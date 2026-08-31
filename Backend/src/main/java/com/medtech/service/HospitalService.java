@@ -29,15 +29,17 @@ import java.util.regex.Pattern;
  *
  * <p>Resolution strategy for a given GPS point:</p>
  * <ol>
- *   <li><b>Registry first</b> — curated facilities within the requested radius
- *       are served straight from Postgres (fast, reliable demo data for the
- *       Wardha pilot district).</li>
- *   <li><b>Live OpenStreetMap fallback</b> — when the registry has nothing
- *       nearby (e.g. the user is in another city), the Overpass API is queried
- *       for hospitals/clinics around the point and the results are cached in
- *       Postgres for subsequent requests.</li>
- *   <li><b>Wide-radius safety net</b> — if the live lookup fails, the nearest
- *       curated facilities within 100&nbsp;km are returned so the map is never empty.</li>
+ *   <li><b>Registry first</b> — curated (or previously cached) facilities within
+ *       the requested radius are served straight from Postgres.</li>
+ *   <li><b>Google Places</b> — when a Places API key is configured, live Google
+ *       Places results (accurate for any city or village in the world) are queried
+ *       and cached in Postgres for subsequent requests.</li>
+ *   <li><b>Live OpenStreetMap fallback</b> — when Google is not configured (or has
+ *       nothing), the Overpass API is queried for hospitals/clinics around the point
+ *       and the results are cached in Postgres.</li>
+ *   <li><b>Wide-radius safety net</b> — if the live lookups fail, the nearest
+ *       previously known facilities within 100&nbsp;km are returned so the map is
+ *       never empty.</li>
  * </ol>
  */
 @Service
@@ -49,19 +51,22 @@ public class HospitalService {
     private static final double KM_PER_DEGREE_LAT = 111.0;
     private static final double MAX_FALLBACK_RADIUS_KM = 100.0;
 
-    /** Rural indicators that upgrade a generic OSM clinic into a PHC/CHC. */
+    /** Rural indicators that upgrade a generic clinic into a PHC/CHC. */
     private static final Pattern PHC_NAME_PATTERN = Pattern.compile(
             "primary health|\\bphc\\b|community health|\\bchc\\b|rural health|sub[- ]?cent(re|er)|dispensary",
             Pattern.CASE_INSENSITIVE);
 
     private final HospitalRepository hospitalRepository;
+    private final GooglePlacesClient googlePlacesClient;
     private final RestClient restClient;
     private final List<String> overpassEndpoints;
 
     public HospitalService(HospitalRepository hospitalRepository,
+                           GooglePlacesClient googlePlacesClient,
                            RestClient.Builder restClientBuilder,
                            @Value("${carelink.overpass.url:https://overpass-api.de/api/interpreter}") String overpassUrl) {
         this.hospitalRepository = hospitalRepository;
+        this.googlePlacesClient = googlePlacesClient;
 
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(4))
@@ -92,11 +97,28 @@ public class HospitalService {
     public List<HospitalResponse> findNearby(double lat, double lng, double radiusKm) {
         List<HospitalResponse> curated = findCuratedNearby(lat, lng, radiusKm);
         if (!curated.isEmpty()) {
-            log.debug("Serving {} curated facilities within {} km of ({}, {})",
-                    curated.size(), radiusKm, lat, lng);
+            log.debug("Serving {} cached facilities within {} km of ({}, {})", curated.size(), radiusKm, lat, lng);
             return curated;
         }
 
+        // 1) Google Places — the most complete, accurate source (used when configured)
+        if (googlePlacesClient.isConfigured()) {
+            try {
+                List<Hospital> googleResults = googlePlacesClient.findHospitalsNear(lat, lng, radiusKm);
+                if (!googleResults.isEmpty()) {
+                    List<Hospital> persisted = cacheFacilities(googleResults);
+                    log.info("Served {} Google Places facilities near ({}, {})", persisted.size(), lat, lng);
+                    return persisted.stream()
+                            .map(h -> toResponse(h, lat, lng))
+                            .sorted(Comparator.comparingDouble(HospitalResponse::distanceKm))
+                            .toList();
+                }
+            } catch (RestClientException | IllegalArgumentException e) {
+                log.warn("Google Places lookup failed for ({}, {}): {}", lat, lng, e.getMessage());
+            }
+        }
+
+        // 2) Live OpenStreetMap fallback
         try {
             List<HospitalResponse> live = findLiveNearby(lat, lng, radiusKm);
             if (!live.isEmpty()) {
@@ -107,7 +129,8 @@ public class HospitalService {
             log.warn("Live OpenStreetMap lookup failed for ({}, {}): {}", lat, lng, e.getMessage());
         }
 
-        log.info("Falling back to curated facilities within {} km", MAX_FALLBACK_RADIUS_KM);
+        // 3) Wide-radius safety net
+        log.info("Falling back to cached facilities within {} km", MAX_FALLBACK_RADIUS_KM);
         return findCuratedNearby(lat, lng, MAX_FALLBACK_RADIUS_KM);
     }
 
@@ -130,14 +153,18 @@ public class HospitalService {
         int radiusMeters = (int) Math.round(radiusKm * 1000);
         String around = "around:%d,%.6f,%.6f".formatted(radiusMeters, lat, lng);
         // "out center;" prints tags + coordinates (nodes) / bbox center (ways)
+        // Include the modern "healthcare" tagging plus private "doctors" surgeries so
+        // rural clinics don't get missed on OSM.
         String query = """
                 [out:json][timeout:15];
                 (
-                  node["amenity"~"^(hospital|clinic)$"](%s);
-                  way["amenity"~"^(hospital|clinic)$"](%s);
+                  node["amenity"~"^(hospital|clinic|doctors)$"](%s);
+                  way["amenity"~"^(hospital|clinic|doctors)$"](%s);
+                  node["healthcare"~"^(hospital|clinic)$"](%s);
+                  way["healthcare"~"^(hospital|clinic)$"](%s);
                 );
                 out center;
-                """.formatted(around, around);
+                """.formatted(around, around, around, around);
 
         for (String endpoint : overpassEndpoints) {
             try {
@@ -184,9 +211,9 @@ public class HospitalService {
                     continue; // nothing usable from this endpoint — try the next one
                 }
 
-                cacheFacilities(fetched);
+                List<Hospital> persisted = cacheFacilities(fetched);
 
-                return fetched.stream()
+                return persisted.stream()
                         .map(h -> toResponse(h, lat, lng))
                         .sorted(Comparator.comparingDouble(HospitalResponse::distanceKm))
                         .toList();
@@ -198,11 +225,15 @@ public class HospitalService {
         return List.of(); // both endpoints failed — caller falls back to the curated registry
     }
 
-    /** Upsert live OSM facilities so repeat searches are served from Postgres. */
-    private void cacheFacilities(List<Hospital> fetched) {
+    /** Upsert live Google/OSM facilities so repeat searches are served from Postgres.
+     *  Returns the persisted entities — these carry stable database ids, which the
+     *  frontend needs as React keys and for map selection. */
+    private List<Hospital> cacheFacilities(List<Hospital> fetched) {
+        List<Hospital> persisted = new ArrayList<>();
         for (Hospital facility : fetched) {
             try {
                 Optional<Hospital> existing = hospitalRepository.findByOsmId(facility.getOsmId());
+                Hospital saved;
                 if (existing.isPresent()) {
                     Hospital cached = existing.get();
                     cached.setName(facility.getName());
@@ -213,15 +244,17 @@ public class HospitalService {
                     if (facility.getPhone() != null) {
                         cached.setPhone(facility.getPhone());
                     }
-                    hospitalRepository.save(cached);
+                    saved = hospitalRepository.save(cached);
                 } else {
-                    hospitalRepository.save(facility);
+                    saved = hospitalRepository.save(facility);
                 }
+                persisted.add(saved);
             } catch (Exception e) {
                 // A single bad row must never break the map
                 log.warn("Could not cache facility {}: {}", facility.getOsmId(), e.getMessage());
             }
         }
+        return persisted;
     }
 
     /* ── Helpers ─────────────────────────────────────────────────────── */

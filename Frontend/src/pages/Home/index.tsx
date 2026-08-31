@@ -16,7 +16,7 @@ import { VoiceAssistantModal } from '../../components/common/VoiceAssistantModal
 import { EmergencyModal } from '../../components/common/EmergencyModal';
 import { NotificationModal } from '../../components/common/NotificationModal';
 import { TopNavBar } from '../../components/common/TopNavBar';
-import { useLocationPermission } from '../../hooks/useLocationPermission';
+import { useLocationContext } from '../../context/LocationContext';
 
 interface HomePageProps {
   onNavigate?: (route: string) => void;
@@ -39,9 +39,14 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
 
-  // One-time GPS location hook
-  const { location: currentLocation, setLocation, requestLocation, isLocating } =
-    useLocationPermission('Wardha Rural District');
+  // Shared location (search / top-bar driven) — the home page mirrors the
+  // same place the "Hospital Near You" page shows.
+  const {
+    label: currentLocation,
+    resolveAndSetPlace,
+    requestGps: requestLocation,
+    isLocating,
+  } = useLocationContext();
 
   const cycleLanguage = () => {
     if (activeLang === 'EN') setActiveLang('HI');
@@ -64,33 +69,13 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
   const currentLang = (localStorage.getItem('app_lang') as 'EN' | 'HI' | 'MR') || 'EN';
   const t = translations[currentLang] ?? translations.EN;
   return (
-    <div className="medtech-container" style={{ backgroundColor: '#fdfbf7', minHeight: '100vh' }}>
-      <style>{`
-  /* Overrides for Rural Health Theme */
-  .action-card {
-    border-left: 8px solid #059669 !important;
-    background-color: #ffffff !important;
-    border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(5, 150, 105, 0.12) !important;
-  }
-  .card-title {
-    color: #065f46 !important;
-    font-size: 1.25rem !important;
-    font-weight: 700 !important;
-  }
-  .card-description {
-    color: #4b5563 !important;
-    font-size: 0.95rem !important;
-  }
-  .card-icon-badge {
-    background-color: #d1fae5 !important;
-    color: #059669 !important;
-  }
-`}</style>
+    <div className="medtech-container">
       {/* Blinkit-style Top Navigation Bar */}
       <TopNavBar
         location={currentLocation}
-        onSetLocation={setLocation}
+        onSetLocation={(loc) => {
+          void resolveAndSetPlace(loc);
+        }}
         isLocating={isLocating}
         onRequestGPS={requestLocation}
         searchQuery={searchQuery}
