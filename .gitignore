@@ -39,3 +39,5 @@ yarn-error.log*
 .classpath
 .project
 .settings/
+
+CareLink-Architecture.pdf
