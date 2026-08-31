@@ -77,7 +77,10 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
 
   // Truncate location string for display
   const displayLocation = location.length > 30 ? location.slice(0, 28) + '…' : location;
-
+  const changeLanguage = (lang: string) => {
+  localStorage.setItem('app_lang', lang);
+  window.location.reload(); 
+  };
   return (
     <header className="topnav-bar">
       <div className="topnav-inner">
@@ -211,20 +214,36 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
         <div className="topnav-right-controls">
           {/* Language Pill */}
           <button
-            type="button"
-            id="topnav-lang-pill"
-            className="topnav-lang-pill"
-            onClick={onCycleLanguage}
-            title="Switch Language (English / Hindi / Marathi)"
-            aria-label={`Current language: ${activeLang}. Click to switch.`}
-          >
-            <span className={`topnav-lang-seg ${activeLang === 'EN' ? 'active' : ''}`}>EN</span>
-            <span className="topnav-lang-div">|</span>
-            <span className={`topnav-lang-seg ${activeLang === 'HI' ? 'active' : ''}`}>HI</span>
-            <span className="topnav-lang-div">|</span>
-            <span className={`topnav-lang-seg ${activeLang === 'MR' ? 'active' : ''}`}>MR</span>
-            <ArrowLeftRight size={12} className="topnav-lang-arrow" />
-          </button>
+  type="button"
+  id="topnav-lang-pill"
+  className="topnav-lang-pill"
+  title="Switch Language (English / Hindi / Marathi)"
+>
+  <span 
+    onClick={(e) => { e.stopPropagation(); changeLanguage('EN'); }} 
+    className={`topnav-lang-seg ${(localStorage.getItem('app_lang') || 'EN') === 'EN' ? 'active' : ''}`}
+    style={{ cursor: 'pointer' }}
+  >
+    EN
+  </span>
+  <span className="topnav-lang-div">|</span>
+  <span 
+    onClick={(e) => { e.stopPropagation(); changeLanguage('HI'); }} 
+    className={`topnav-lang-seg ${localStorage.getItem('app_lang') === 'HI' ? 'active' : ''}`}
+    style={{ cursor: 'pointer' }}
+  >
+    HI
+  </span>
+  <span className="topnav-lang-div">|</span>
+  <span 
+    onClick={(e) => { e.stopPropagation(); changeLanguage('MR'); }} 
+    className={`topnav-lang-seg ${localStorage.getItem('app_lang') === 'MR' ? 'active' : ''}`}
+    style={{ cursor: 'pointer' }}
+  >
+    MR
+  </span>
+  <ArrowLeftRight size={12} className="topnav-lang-arrow" />
+</button>
 
           {/* Notification Bell */}
           <button
