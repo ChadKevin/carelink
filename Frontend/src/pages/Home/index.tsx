@@ -61,8 +61,8 @@ export const HomePage: React.FC<HomePageProps> = ({ onNavigate }) => {
     }
     setActiveFeatureModal(cardType);
   };
-  const currentLang = localStorage.getItem('app_lang') || 'EN';
-const t = translations[currentLang];
+  const currentLang = (localStorage.getItem('app_lang') as 'EN' | 'HI' | 'MR') || 'EN';
+  const t = translations[currentLang] ?? translations.EN;
   return (
     <div className="medtech-container" style={{ backgroundColor: '#fdfbf7', minHeight: '100vh' }}>
       <style>{`
@@ -131,9 +131,9 @@ const t = translations[currentLang];
             <MapPin size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Hospitals Near You</h3>
+            <h3 className="card-title">{t.hospitalTitle}</h3>
             <p className="card-description">
-              Locate nearby PHCs, clinics &amp; live emergency beds
+              {t.hospitalDesc}
             </p>
           </div>
         </div>
@@ -149,9 +149,9 @@ const t = translations[currentLang];
             <Video size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Talk to a Doctor</h3>
+            <h3 className="card-title">{t.doctorTitle}</h3>
             <p className="card-description">
-              Connect with verified tele-health physicians
+              {t.doctorDesc}
             </p>
           </div>
         </div>
@@ -167,9 +167,9 @@ const t = translations[currentLang];
             <Scan size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Scan a Problem</h3>
+            <h3 className="card-title">{t.scanTitle}</h3>
             <p className="card-description">
-              Upload prescription, rash or wound photo for analysis
+              {t.scanDesc}
             </p>
           </div>
         </div>
@@ -185,9 +185,9 @@ const t = translations[currentLang];
             <FlaskConical size={22} />
           </div>
           <div className="card-content">
-            <h3 className="card-title">Lab / X-Ray</h3>
+            <h3 className="card-title">{t.labTitle}</h3>
             <p className="card-description">
-              Book diagnostic tests, blood work or view radiology
+              {t.labDesc}
             </p>
           </div>
         </div>
