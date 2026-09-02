@@ -31,9 +31,19 @@ const GOOGLE_MAPS_API_KEY: string | undefined =
 
 export const isGoogleMapsEnabled = (): boolean => Boolean(GOOGLE_MAPS_API_KEY);
 
+const LOAD_TIMEOUT_MS = 10_000;
+
 let mapsPromise: Promise<void> | null = null;
 
-/** Loads the Google Maps JS API (with Places) exactly once. */
+/**
+ * Loads the Google Maps JS API (with Places) exactly once.
+ *
+ * Important: if the script loads but the API bootstrap callback is never invoked
+ * (blocked HTTP referrer, Places/Maps API not enabled on the key, billing not
+ * enabled, or quota exceeded), we timeout and reject instead of hanging — that lets
+ * the map component fall back to the free OpenStreetMap/Leaflet view rather than
+ * showing an empty box forever.
+ */
 export const loadGoogleMaps = (): Promise<void> => {
   if (!GOOGLE_MAPS_API_KEY) {
     return Promise.reject(new Error('Google Maps API key is not configured'));
@@ -46,22 +56,38 @@ export const loadGoogleMaps = (): Promise<void> => {
   }
   mapsPromise = new Promise<void>((resolve, reject) => {
     const cbName = `__carelinkMapsCb_${Date.now()}`;
-    (window as any)[cbName] = () => {
+    const cleanup = () => {
       delete (window as any)[cbName];
+      mapsPromise = null;
+    };
+    (window as any)[cbName] = () => {
+      cleanup();
       resolve();
     };
     const script = document.createElement('script');
     script.src =
       `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(GOOGLE_MAPS_API_KEY)}` +
-      `&libraries=places&v=weekly&callback=${cbName}`;
+      `&libraries=places&v=weekly&region=IN&callback=${cbName}`;
     script.async = true;
     script.defer = true;
     script.onerror = () => {
-      delete (window as any)[cbName];
-      mapsPromise = null;
+      cleanup();
       reject(new Error('Failed to load Google Maps script'));
     };
     document.head.appendChild(script);
+
+    // Safety net for silent failures (restricted key / API disabled / quota).
+    setTimeout(() => {
+      // If the script eventually loaded but our callback just fired late, treat
+      // it as success so we don't spuriously fail slow-but-working networks.
+      if ((window as any).google?.maps) {
+        cleanup();
+        resolve();
+        return;
+      }
+      cleanup();
+      reject(new Error('Timed out waiting for Google Maps to load'));
+    }, LOAD_TIMEOUT_MS);
   });
   return mapsPromise;
 };

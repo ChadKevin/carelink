@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import type { DrivingInfo } from '../../services/googleMapsService';
 import { loadGoogleMaps } from '../../services/googleMapsService';
 import type { FacilityType, Hospital } from '../../services/locationService';
@@ -9,6 +10,8 @@ export interface GoogleHospitalMapProps {
   selectedId: string | null;
   onSelect: (id: string) => void;
   drivingInfo?: Record<string, DrivingInfo>;
+  /** Called if Google Maps fails to load so the parent can fall back to Leaflet. */
+  onUnavailable?: () => void;
 }
 
 const MARKER_COLORS: Record<FacilityType, string> = {
@@ -70,6 +73,7 @@ export const GoogleHospitalMap: React.FC<GoogleHospitalMapProps> = ({
   selectedId,
   onSelect,
   drivingInfo,
+  onUnavailable,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -86,20 +90,31 @@ export const GoogleHospitalMap: React.FC<GoogleHospitalMapProps> = ({
       .then(() => {
         if (cancelled || !containerRef.current) return;
         const g = (window as any).google;
-        mapRef.current = new g.maps.Map(containerRef.current, {
-          center: { lat: center.lat, lng: center.lng },
-          zoom: 13,
-          fullscreenControl: false,
-          mapTypeControl: false,
-          streetViewControl: false,
-          zoomControl: true,
-          gestureHandling: 'auto',
-        });
-        infoRef.current = new g.maps.InfoWindow();
-        setReady(true);
+        if (!g?.maps) {
+          onUnavailable?.();
+          return;
+        }
+        try {
+          mapRef.current = new g.maps.Map(containerRef.current, {
+            center: { lat: center.lat, lng: center.lng },
+            zoom: 13,
+            fullscreenControl: false,
+            mapTypeControl: false,
+            streetViewControl: false,
+            zoomControl: true,
+            gestureHandling: 'auto',
+          });
+          infoRef.current = new g.maps.InfoWindow();
+          setReady(true);
+        } catch (err) {
+          // e.g. an invalid/restricted key makes `new google.maps.Map()` throw.
+          console.error('Google Map initialisation failed:', err);
+          onUnavailable?.();
+        }
       })
-      .catch(() => {
-        /* map load failed — HospitalMap falls back to the Leaflet view */
+      .catch((err) => {
+        console.error('Google Maps loading failed:', err);
+        onUnavailable?.();
       });
     return () => {
       cancelled = true;
@@ -199,7 +214,17 @@ export const GoogleHospitalMap: React.FC<GoogleHospitalMapProps> = ({
     }
   }, [ready, center, hospitals, openInfo, onSelect]);
 
-  return <div ref={containerRef} className="hosp-google-map" />;
+  return (
+    <>
+      <div ref={containerRef} className="hosp-google-map" />
+      {!ready && (
+        <div className="hosp-map-loading">
+          <Loader2 size={20} className="hosp-spin" />
+          Loading Google Map…
+        </div>
+      )}
+    </>
+  );
 };
 
 export default GoogleHospitalMap;

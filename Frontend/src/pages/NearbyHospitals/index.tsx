@@ -45,6 +45,13 @@ const DEFAULT_LOCATION = { lat: 20.7453, lng: 78.6022 };
 const DEFAULT_LABEL = 'Wardha Rural District';
 const SEARCH_RADII_KM = [10, 25, 50, 100];
 
+/**
+ * Cap the number of facilities shown on the map / cards. City searches can return
+ * hundreds of cached facilities; rendering all of them makes the map heavy and
+ * fires one Distance Matrix call per ~20 entries (slow + quota hungry).
+ */
+const MAX_FACILITIES = 25;
+
 /* ─── Formatting helpers ────────────────────────────────────────────── */
 
 const formatDistance = (km: number): string =>
@@ -229,6 +236,7 @@ export const NearbyHospitalsPage: React.FC = () => {
 
   /* Step 2 — facilities, radius, filters & map */
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
+  const [totalFound, setTotalFound] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [usedFallback, setUsedFallback] = useState(false);
@@ -294,6 +302,7 @@ export const NearbyHospitalsPage: React.FC = () => {
     setUsedFallback(false);
     setSelectedId(null);
     setDrivingInfo({});
+    setTotalFound(0);
 
     (async () => {
       // Live browser-side OpenStreetMap lookup — graceful fallback so the map keeps
@@ -305,7 +314,8 @@ export const NearbyHospitalsPage: React.FC = () => {
           radiusKm,
         });
         if (!cancelled) {
-          setHospitals(osm);
+          setHospitals(osm.slice(0, MAX_FACILITIES));
+          setTotalFound(osm.length);
           setUsedFallback(osm.length > 0);
         }
         return osm;
@@ -319,7 +329,13 @@ export const NearbyHospitalsPage: React.FC = () => {
         });
         if (cancelled) return;
         if (data.length > 0) {
-          setHospitals(data);
+          // Newest rows from repeated Google/OSM searches can lag behind the
+          // closest ones — show the nearest MAX_FACILITIES first.
+          const nearest = [...data]
+            .sort((a, b) => a.distanceKm - b.distanceKm)
+            .slice(0, MAX_FACILITIES);
+          setHospitals(nearest);
+          setTotalFound(data.length);
         } else {
           await viaOSM();
         }
@@ -534,7 +550,11 @@ export const NearbyHospitalsPage: React.FC = () => {
           <>
             <div className="hosp-count-row">
               <span className="hosp-count">
-                <strong>{filtered.length}</strong> facilities near {contextLabel}
+                <strong>{filtered.length}</strong>
+                {totalFound > hospitals.length
+                  ? ` nearest of ${totalFound.toLocaleString('en-IN')} facilities`
+                  : ' facilities'}{' '}
+                near {contextLabel}
               </span>
               <div className="hosp-legend">
                 {(Object.keys(TYPE_META) as FacilityType[]).map((type) => (

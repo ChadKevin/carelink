@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -17,15 +17,18 @@ export interface HospitalMapProps {
 }
 
 /**
- * Dispatches to Google Maps when VITE_GOOGLE_MAPS_API_KEY is configured,
- * otherwise renders the free OpenStreetMap (Leaflet) view.
+ * Dispatches to Google Maps when VITE_GOOGLE_MAPS_API_KEY is configured. If the
+ * Google Maps script fails to load (blocked referrer, quota, disabled API…), it
+ * transparently falls back to the free OpenStreetMap (Leaflet) view so the map is
+ * never a blank box.
  */
 export const HospitalMap: React.FC<HospitalMapProps> = (props) => {
-  return isGoogleMapsEnabled() ? (
-    <GoogleHospitalMap {...props} />
-  ) : (
-    <LeafletHospitalMap {...props} />
-  );
+  const [googleFailed, setGoogleFailed] = useState(false);
+  const useGoogle = isGoogleMapsEnabled() && !googleFailed;
+  if (useGoogle) {
+    return <GoogleHospitalMap {...props} onUnavailable={() => setGoogleFailed(true)} />;
+  }
+  return <LeafletHospitalMap {...props} />;
 };
 
 /* ─── Custom markers (pure CSS/SVG — no broken default pin assets) ──── */
