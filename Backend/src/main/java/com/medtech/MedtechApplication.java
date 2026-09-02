@@ -1,5 +1,6 @@
 package com.medtech;
 
+import com.medtech.config.RenderDatabaseInitializer;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
@@ -7,7 +8,9 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class MedtechApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(MedtechApplication.class, args);
+        SpringApplication app = new SpringApplication(MedtechApplication.class);
+        app.addInitializers(new RenderDatabaseInitializer());
+        app.run(args);
     }
 
 }
