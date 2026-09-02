@@ -82,6 +82,12 @@ public class GooglePlacesClient {
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofSeconds(12));
         this.restClient = restClientBuilder.requestFactory(requestFactory).build();
+
+        if (this.apiKey != null) {
+            log.info("Google Places integration ENABLED for hospital search");
+        } else {
+            log.info("No Google Places API key configured — hospital search will use OpenStreetMap");
+        }
     }
 
     /** Whether a Google Places API key has been configured. */
