@@ -8,6 +8,7 @@ import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.MapPropertySource;
 import org.springframework.core.env.MutablePropertySources;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -15,15 +16,13 @@ import java.util.Map;
  * Makes the app boot cleanly on Render (and any host that injects a Postgres URL
  * in the {@code postgres://} scheme).
  *
- * <p>Render's Postgres "Internal Database URL" looks like
- * {@code postgres://user:pass@host:5432/db}, but Hikari/Spring needs a JDBC URL
- * ({@code jdbc:postgresql://…}). This initializer detects the {@code postgres://}
- * scheme in {@code SPRING_DATASOURCE_URL} and transparently rewrites it to the JDBC
- * form plus the Postgres driver, before the DataSource is created.</p>
- *
- * <p>If the URL is already a valid {@code jdbc:postgresql://…} value (local dev),
- * it is left untouched. If it's missing, we don't interfere and let Spring fail
- * with a clear message.</p>
+ * <p>Render's Postgres URL looks like
+ * {@code postgres://user:password@host:5432/db}. The Postgres JDBC driver does
+ * not support credentials in the URL authority, which causes it to fail parsing
+ * and fall back to {@code localhost:5432}. This initializer extracts the host,
+ * port, database, and credentials using {@link URI}, building a clean
+ * {@code jdbc:postgresql://host:port/db} URL and injecting the username and
+ * password.</p>
  */
 public class RenderDatabaseInitializer
         implements ApplicationContextInitializer<ConfigurableApplicationContext> {
@@ -31,6 +30,8 @@ public class RenderDatabaseInitializer
     private static final Logger log = LoggerFactory.getLogger(RenderDatabaseInitializer.class);
 
     private static final String DATASOURCE_URL = "spring.datasource.url";
+    private static final String DATASOURCE_USERNAME = "spring.datasource.username";
+    private static final String DATASOURCE_PASSWORD = "spring.datasource.password";
     private static final String DATASOURCE_DRIVER = "spring.datasource.driver-class-name";
     private static final String DRIVER = "org.postgresql.Driver";
 
@@ -45,33 +46,68 @@ public class RenderDatabaseInitializer
         }
 
         rawUrl = rawUrl.trim();
-        if (rawUrl.startsWith("jdbc:")) {
-            log.info("Datasource URL is already a JDBC URL — no conversion needed.");
+
+        // If already a clean JDBC URL without embedded user:pass@, leave it untouched
+        if (rawUrl.startsWith("jdbc:") && !rawUrl.contains("@")) {
+            log.info("Datasource URL is already a clean JDBC URL — no conversion needed.");
             return;
         }
 
-        // Build inner URL from the postgres:// (or postgresql://) form. Strip the
-        // scheme so we can rebuild a JDBC URL; keep query params (e.g. ?sslmode=require).
-        int schemeEnd = rawUrl.indexOf("://");
-        boolean isPostgresUrl = rawUrl.startsWith("postgres://") || rawUrl.startsWith("postgresql://");
-        if (schemeEnd <= 0 || !isPostgresUrl) {
-            log.warn("Datasource URL scheme is '{}' — expected postgres:// or jdbc:. Leaving untouched.",
-                    schemeEnd > 0 ? rawUrl.substring(0, schemeEnd) : rawUrl);
+        String toParse = rawUrl;
+        if (toParse.startsWith("jdbc:")) {
+            toParse = toParse.substring("jdbc:".length());
+        }
+
+        boolean isPostgresUrl = toParse.startsWith("postgres://") || toParse.startsWith("postgresql://");
+        if (!isPostgresUrl) {
+            log.warn("Datasource URL is neither postgres:// nor jdbc:. Leaving untouched: {}", rawUrl);
             return;
         }
 
-        // Remove `?sslmode=require` etc. from the authority so we can build a
-        // clean jdbc URL, then re-append any query params after the host:port/db.
-        String jdbcUrl = "jdbc:postgresql:" + rawUrl.substring(schemeEnd);
-        log.info("Translated Render postgres:// datasource URL to a JDBC URL.");
+        try {
+            // Standardize scheme to postgres:// for java.net.URI
+            String uriString = toParse.startsWith("postgresql://")
+                    ? "postgres://" + toParse.substring("postgresql://".length())
+                    : toParse;
 
-        // Give Spring (and Hikari) both the converted URL and the driver class.
-        MutablePropertySources sources = env.getPropertySources();
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put(DATASOURCE_URL, jdbcUrl);
-        map.put(DATASOURCE_DRIVER, DRIVER);
-        sources.addFirst(new MapPropertySource("carelinkRenderDatabase", map));
+            URI uri = URI.create(uriString);
 
-        log.debug("SPRING_DATASOURCE_URL now = {}", jdbcUrl);
+            String host = uri.getHost();
+            int port = uri.getPort() > 0 ? uri.getPort() : 5432;
+            String path = uri.getPath() != null ? uri.getPath() : "";
+            String query = uri.getQuery();
+
+            StringBuilder jdbcUrl = new StringBuilder("jdbc:postgresql://")
+                    .append(host)
+                    .append(":")
+                    .append(port)
+                    .append(path);
+
+            if (query != null && !query.isBlank()) {
+                jdbcUrl.append("?").append(query);
+            }
+
+            MutablePropertySources sources = env.getPropertySources();
+            Map<String, Object> map = new LinkedHashMap<>();
+            map.put(DATASOURCE_URL, jdbcUrl.toString());
+            map.put(DATASOURCE_DRIVER, DRIVER);
+
+            // Extract credentials from userInfo if present (user:password)
+            String userInfo = uri.getUserInfo();
+            if (userInfo != null && !userInfo.isBlank()) {
+                String[] parts = userInfo.split(":", 2);
+                if (parts.length > 0 && !parts[0].isBlank()) {
+                    map.put(DATASOURCE_USERNAME, parts[0]);
+                }
+                if (parts.length > 1) {
+                    map.put(DATASOURCE_PASSWORD, parts[1]);
+                }
+            }
+
+            sources.addFirst(new MapPropertySource("carelinkRenderDatabase", map));
+            log.info("Successfully translated Render postgres URL to clean JDBC URL (host: {}:{})", host, port);
+        } catch (Exception e) {
+            log.error("Failed to parse Render database URL: {}", e.getMessage(), e);
+        }
     }
 }
