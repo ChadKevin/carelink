@@ -1,0 +1,37 @@
+# Render Blueprint — setup for the CareLink backend.
+# Render builds the Dockerfile on its cloud servers (no local Docker needed).
+
+services:
+  - type: web
+    name: carelink-backend
+    runtime: docker
+    repo: https://github.com/ChadKevin/carelink
+    branch: main
+    rootDir: Backend
+    dockerfilePath: Dockerfile
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /api/hospitals/nearby?lat=20.7453&lng=78.6022&radius=5
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: SPRING_DATASOURCE_URL
+        fromDatabase:
+          name: carelink-db
+          property: connectionString
+      - key: SPRING_DATASOURCE_USERNAME
+        fromDatabase:
+          name: carelink-db
+          property: user
+      - key: SPRING_DATASOURCE_PASSWORD
+        fromDatabase:
+          name: carelink-db
+          property: password
+      - key: CARELINK_GOOGLE_MAPS_API_KEY
+        sync: false # set this value in the Render dashboard
+
+databases:
+  - name: carelink-db
+    plan: free
+    databaseName: carelink_db
+    user: carelink
